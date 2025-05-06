@@ -8,7 +8,13 @@ Install python dependencies:
 pip install -r requirments.txt
 ```
 
-Then edit the ```.env``` file and provide following values
+Then create ```.env``` file and with following content:
+
+```bash
+OPENAI_API_KEY=<Your OpenAI API key>
+GOOGLE_API_KEY=<Your Google API key>
+ANTHROPIC_API_KEY=<Your Anthropic API key>
+```
 
 | Key name          | Description                                                          |
 |-------------------|----------------------------------------------------------------------|
@@ -16,9 +22,9 @@ Then edit the ```.env``` file and provide following values
 | GOOGLE_API_KEY    | Google (gemini) API key                                              |
 | ANTHROPIC_API_KEY | Anthropic (claude) API key                                           |                                           
 
-## Starting server
+## Start server
 
-To start a web-server just run:
+To start a web server run:
 
 ```bash
 python main.py
@@ -29,8 +35,6 @@ Then access the server on http://localhost:8080/
 ## API routes
 
 Note: all input/output parameters are passed as a JSON object with the fields specified below.
-
-**API routes table**
 
 | Route          | Description                        | Method     |
 |----------------|------------------------------------|------------|
@@ -53,9 +57,9 @@ Register a new user
 
 ```json
 {
-  "name": [First/last name of the user],
-  "username": [User name (login)],
-  "password": [User password]
+  "name": <First/last name of the user>,
+  "username": <User name (login)>,
+  "password": <User password>
 }
 ```
 
@@ -63,8 +67,8 @@ Register a new user
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")]
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>
 }
 ```
 
@@ -76,8 +80,8 @@ Log-in an existed user
 
 ```json
 {
-  "username": [User login],
-  "password": [User password],
+  "username": <User login>,
+  "password": <User password>,
 }
 ```
 
@@ -85,8 +89,8 @@ Log-in an existed user
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")]
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>
 }
 ```
 
@@ -104,8 +108,8 @@ Log-out logged user
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")]
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>
 }
 ```
 
@@ -123,16 +127,16 @@ Get list of user's chats
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")],
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>,
   "chats": [
     {
-      "id": [Chat ID],
-      "title": [Chat title],
+      "id": <Chat ID>,
+      "title": <Chat title>,
     },
     {
-      "id": [Chat ID],
-      "title": [Chat title],
+      "id": <Chat ID>,
+      "title": <Chat title>,
     },
     ...
   ]
@@ -147,7 +151,7 @@ Create a new user chat
 
 ```json
 {
-  "title": [New chat title]
+  "title": <New chat title>
 }
 ```
 
@@ -155,8 +159,8 @@ Create a new user chat
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")]
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>
 }
 ```
 
@@ -168,8 +172,8 @@ Change chat title
 
 ```json
 {
-  "chat_id": [ID of the chat to edit title],
-  "title": [New chat title],
+  "chat_id": <ID of the chat to edit title>,
+  "title": <New chat title>,
 }
 ```
 
@@ -177,8 +181,8 @@ Change chat title
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")]
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>
 }
 ```
 
@@ -190,7 +194,7 @@ Delete an existed user chat
 
 ```json
 {
-  "chat_id": [ID of the chat to delete]
+  "chat_id": <ID of the chat to delete>
 }
 ```
 
@@ -198,8 +202,8 @@ Delete an existed user chat
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")]
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>
 }
 ```
 
@@ -211,7 +215,7 @@ Loading chat and get history
 
 ```json
 {
-  "chat_id": [ID of the chat to loading]
+  "chat_id": <ID of the chat to loading>
 }
 ```
 
@@ -219,18 +223,18 @@ Loading chat and get history
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")],
-  "id": [Chat ID],
-  "title": [Chat title],
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>,
+  "id": <Chat ID>,
+  "title": <Chat title>,
   "messages": [
     {
-      "role": [Message role (user, assistant or system)],
-      "message": [Message content]
+      "role": <Message role (user, assistant or system)>,
+      "message": <Message content>
     },
     {
-      "role": [Message role (user, assistant or system)],
-      "message": [Message content],
+      "role": <Message role (user, assistant or system)>,
+      "message": <Message content>,
     },
     ...
   ]
@@ -245,8 +249,8 @@ Send a message to the selected LLM model
 
 ```json
 {
-  "model_id": [ID of the model to use],
-  "message": [User message to send]
+  "model_id": <ID of the model to use>,
+  "message": <User message to send>
 }
 ```
 
@@ -254,9 +258,9 @@ Send a message to the selected LLM model
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")],
-  "response": [Model response]
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>,
+  "response": <Model response>
 }
 ```
 
@@ -274,18 +278,18 @@ Returns list of available LLM models
 
 ```json
 {
-  "status": ["ok" or "error"],
-  "error": [Error description (if status == "error")],
+  "status": <"ok" or "error">,
+  "error": <Error description (if status == "error")>,
   "models": [
     {
-      "id": [Model ID],
-      "provider": [Model provider (openai, google etc.)],
-      "model": [LLM model name]
+      "id": <Model ID>,
+      "provider": <Model provider (openai, google etc.)>,
+      "model": <Model name>
     },
     {
-      "id": [Model ID],
-      "provider": [Model provider (openai, google etc.)],
-      "model": [LLM model name]
+      "id": <Model ID>,
+      "provider": <Model provider (openai, google etc.)>,
+      "model": <Model name>
     },
     ...
   ]

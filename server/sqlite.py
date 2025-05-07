@@ -1,7 +1,5 @@
 import sqlite3
 
-from threading import Lock
-
 
 class DatabaseException(Exception):
     pass
@@ -55,32 +53,45 @@ class SQLite:
     """
     Class to working with SQLite databases
     """
-    def __init__(self):
+    def __init__(self, db_file: str):
         """
         Initialize SQLite
 
-        :param dbfile: Full path to the .db file
+        :param db_file: Full path to the SQLite .db file
         """
         self.__conn = None
         self.__cursor = None
-        self.__lock = Lock()
+        self.__db_file = db_file
 
-    def open(self, file_name: str) -> None:
+    def open(self) -> None:
         """
         Open database
         """
         try:
-            self.__conn = sqlite3.connect(file_name)
+            self.__conn = sqlite3.connect(self.__db_file)
             self.__cursor = self.__conn.cursor()
         except Exception as e:
             raise DatabaseException(f'SQLite connection error: {e}')
 
     def close(self) -> None:
         """
-        Close database connection
+        Close database
         """
-        with self.__lock:
+        if self.__conn is not None:
             self.__conn.close()
+
+    def __enter__(self):
+        """
+        Open database
+        """
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Close database
+        """
+        self.close()
 
     def select(self, table_name: str, fields: list[str] = None, where: dict[str, str] = None,
                orderby: str = None, groupby: str = None) -> list:
@@ -101,9 +112,8 @@ class SQLite:
             result = []
 
             if fields is None:
-                with self.__lock:
-                    self.__cursor.execute(f'PRAGMA table_info("{table_name}")')
-                    fields = [entry[1] for entry in self.__cursor.fetchall()]
+                self.__cursor.execute(f'PRAGMA table_info("{table_name}")')
+                fields = [entry[1] for entry in self.__cursor.fetchall()]
 
             query = create_select_statement(table_name, fields)
 
@@ -116,9 +126,8 @@ class SQLite:
             if groupby is not None:
                 query += f' GROUP BY {groupby}'
 
-            with self.__lock:
-                self.__cursor.execute(query)
-                db_result = self.__cursor.fetchall()
+            self.__cursor.execute(query)
+            db_result = self.__cursor.fetchall()
 
             for db_entry in db_result:
                 entry = {}
@@ -155,11 +164,10 @@ class SQLite:
 
             query += f') VALUES ({insert_values})'
 
-            with self.__lock:
-                self.__cursor.execute(query)
-                self.__conn.commit()
+            self.__cursor.execute(query)
+            self.__conn.commit()
 
-                return self.__cursor.lastrowid
+            return self.__cursor.lastrowid
         except Exception as e:
             raise DatabaseException(f'SQLite error: {e}')
 
@@ -187,8 +195,7 @@ class SQLite:
             if where is not None:
                 query += ' ' + create_where_statement(where)
 
-            with self.__lock:
-                self.__cursor.executescript(query)
+            self.__cursor.executescript(query)
         except Exception as e:
             raise DatabaseException(f'SQLite error: {e}')
 
@@ -203,13 +210,12 @@ class SQLite:
             raise DatabaseException('No opened database')
 
         try:
-            query = f'DELETE FROM "{table_name}" ';
+            query = f'DELETE FROM "{table_name}" '
 
             if where is not None:
                 query += create_where_statement(where)
 
-            with self.__lock:
-                self.__cursor.executescript(query)
+            self.__cursor.executescript(query)
         except Exception as e:
             raise DatabaseException(f'SQLite error: {e}')
 
@@ -224,9 +230,8 @@ class SQLite:
             raise DatabaseException('No opened database')
 
         try:
-            with self.__lock:
-                self.__cursor.executescript(query)
-                if commit:
-                    self.__conn.commit()
+            self.__cursor.executescript(query)
+            if commit:
+                self.__conn.commit()
         except Exception as e:
             raise DatabaseException(f'SQLite error: {e}')

@@ -24,8 +24,7 @@ app.debug = True
 app.secret_key = secrets.token_urlsafe(32)
 
 # Configure database
-local_db = SQLite()
-local_db.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.db"))
+local_db = SQLite(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.db"))
 
 # Build model list
 load_dotenv()
@@ -98,22 +97,23 @@ def handle_errors():
 def auth_register():
     request_json = request.get_json()
 
-    users = local_db.select('users', where={'username': request_json['username']})
+    with local_db as db:
+        users = db.select('users', where={'username': request_json['username']})
 
-    if len(users) != 0:
-        return jsonify({
-            'status': STATUS_ERROR,
-            'error': 'A user with same user name already exists, try another'
+        if len(users) != 0:
+            return jsonify({
+                'status': STATUS_ERROR,
+                'error': 'A user with same user name already exists, try another'
+            })
+
+        pass_hash = SHA256.new(bytes(request_json['password'], encoding='utf-8')).hexdigest()
+
+        db.insert('users', values={
+            'username': request_json['username'],
+            'password': pass_hash,
+            'name': request_json['name'] if 'name' in request_json else '',
+            'permissions_id': 1,
         })
-
-    pass_hash = SHA256.new(bytes(request_json['password'], encoding='utf-8')).hexdigest()
-
-    local_db.insert('users', values={
-        'username': request_json['username'],
-        'password': pass_hash,
-        'name': request_json['name'] if 'name' in request_json else '',
-        'permissions_id': 1,
-    })
 
     return jsonify({
         'status': STATUS_OK
@@ -133,10 +133,11 @@ def auth_login():
 
     pass_hash = SHA256.new(bytes(request_json['password'], encoding='utf-8')).hexdigest()
 
-    users = local_db.select("users", where={
-        "username": request_json["username"],
-        "password": pass_hash
-    })
+    with local_db as db:
+        users = db.select("users", where={
+            "username": request_json["username"],
+            "password": pass_hash
+        })
 
     if len(users) == 0:
         return jsonify({
@@ -175,7 +176,8 @@ def chat_list():
         "chats": []
     }
 
-    chats = local_db.select("chats", where={"user_id": session["id"]})
+    with local_db as db:
+        chats = db.select("chats", where={"user_id": session["id"]})
 
     for chat in chats:
         result["chats"].append({
@@ -192,10 +194,11 @@ def chat_list():
 def chat_create():
     request_json = request.get_json()
 
-    chat_id = local_db.insert("chats", values={
-        "user_id": session["id"],
-        "title": request_json["title"]
-    })
+    with local_db as db:
+        chat_id = db.insert("chats", values={
+            "user_id": session["id"],
+            "title": request_json["title"]
+        })
 
     session["chat_id"] = chat_id
     session["history"] = []
@@ -211,21 +214,22 @@ def chat_create():
 def chat_edit():
     request_json = request.get_json()
 
-    chats = local_db.select("chats", where={
-        "id": request_json["chat_id"],
-        "user_id": session["id"],
-    })
-
-    if len(chats) == 0:
-        return jsonify({
-            "status": STATUS_ERROR,
-            "error": f"Error changing chat data: chat with ID {request_json['chat_id']} not found"
+    with local_db as db:
+        chats = db.select("chats", where={
+            "id": request_json["chat_id"],
+            "user_id": session["id"],
         })
 
-    local_db.update("chats",
-                    values={"title": request_json["title"]},
-                    where={"id": request_json["chat_id"], "user_id": session["id"]}
-                    )
+        if len(chats) == 0:
+            return jsonify({
+                "status": STATUS_ERROR,
+                "error": f"Error changing chat data: chat with ID {request_json['chat_id']} not found"
+            })
+
+        db.update("chats",
+                  values={"title": request_json["title"]},
+                  where={"id": request_json["chat_id"], "user_id": session["id"]}
+                  )
 
     return jsonify({
         "status": STATUS_OK
@@ -238,15 +242,16 @@ def chat_edit():
 def chat_delete():
     request_json = request.get_json()
 
-    chats = local_db.select("chats", where={"id": request_json["chat_id"], "user_id": session["id"]})
+    with local_db as db:
+        chats = db.select("chats", where={"id": request_json["chat_id"], "user_id": session["id"]})
 
-    if len(chats) == 0:
-        return jsonify({
-            "status": STATUS_ERROR,
-            "error": "Error deleting chat: chat with ID {} not found"
-        })
+        if len(chats) == 0:
+            return jsonify({
+                "status": STATUS_ERROR,
+                "error": "Error deleting chat: chat with ID {} not found"
+            })
 
-    local_db.delete("chats", where={"id": request_json["chat_id"], "user_id": session["id"]})
+        db.delete("chats", where={"id": request_json["chat_id"], "user_id": session["id"]})
 
     if "chat_id" in session and session["chat_id"] == request_json["chat_id"]:
         session.pop("chat_id", None)
@@ -263,24 +268,25 @@ def chat_delete():
 def chat_get():
     request_json = request.get_json()
 
-    chats = local_db.select("chats", where={"id": request_json["chat_id"], "user_id": session["id"]})
+    with local_db as db:
+        chats = db.select("chats", where={"id": request_json["chat_id"], "user_id": session["id"]})
 
-    if len(chats) == 0:
-        return jsonify({
-            "status": STATUS_ERROR,
-            "error": f"Error getting chat: chat with ID {request_json['chat_id']} not found"
-        })
+        if len(chats) == 0:
+            return jsonify({
+                "status": STATUS_ERROR,
+                "error": f"Error getting chat: chat with ID {request_json['chat_id']} not found"
+            })
 
-    # Initialize session and restore history from the database
-    session["chat_id"] = request_json["chat_id"]
-    session["history"] = []
+        # Initialize session and restore history from the database
+        session["chat_id"] = request_json["chat_id"]
+        session["history"] = []
 
-    messages = local_db.select("chat_messages", where={"chat_id": request_json["chat_id"]})
-    for message in messages:
-        session["history"].append({
-            "role": message["role"],
-            "message": message["message"]
-        })
+        messages = db.select("chat_messages", where={"chat_id": request_json["chat_id"]})
+        for message in messages:
+            session["history"].append({
+                "role": message["role"],
+                "message": message["message"]
+            })
 
     return jsonify({
         "status": STATUS_OK,
@@ -314,36 +320,37 @@ def chat_send():
             "error": "Error: no chat selected"
         })
 
-    local_db.insert("chat_messages", values={
-        "chat_id": session["chat_id"],
-        "message": request_json["message"],
-        "role": "user"
-    })
-    session["history"].append({
-        "role": "user",
-        "message": request_json["message"]
-    })
+    with local_db as db:
+        db.insert("chat_messages", values={
+            "chat_id": session["chat_id"],
+            "message": request_json["message"],
+            "role": "user"
+        })
+        session["history"].append({
+            "role": "user",
+            "message": request_json["message"]
+        })
 
-    model = MODELS[request_json["model_id"]]
+        model = MODELS[request_json["model_id"]]
 
-    history = []
-    for message in session["history"]:
-        if message["role"] == "user":
-            history.append(HumanMessage(message["message"]))
-        else:
-            history.append(AIMessage(message["message"]))
+        history = []
+        for message in session["history"]:
+            if message["role"] == "user":
+                history.append(HumanMessage(message["message"]))
+            else:
+                history.append(AIMessage(message["message"]))
 
-    response = model["instance"].invoke(history)
+        response = model["instance"].invoke(history)
 
-    local_db.insert("chat_messages", values={
-        "chat_id": session["chat_id"],
-        "message": response.content,
-        "role": "assistant",
-    })
-    session["history"].append({
-        "role": "assistant",
-        "message": response.content
-    })
+        db.insert("chat_messages", values={
+            "chat_id": session["chat_id"],
+            "message": response.content,
+            "role": "assistant",
+        })
+        session["history"].append({
+            "role": "assistant",
+            "message": response.content
+        })
 
     return jsonify({
         "status": STATUS_OK,
